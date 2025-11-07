@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import project.simple_commerce.item.entity.Item;
 import project.simple_commerce.item.repository.ItemRepository;
 import project.simple_commerce.member.entity.Member;
@@ -34,73 +35,126 @@ class OrderServiceTest {
     @Autowired
     ItemRepository itemRepository;
 
-    private Member testMember;
-    private Item testItem;
+    @Autowired
+    OptimisticOrderFacade optimisticOrderFacade;
+
+    @Autowired
+    PessimisticOrderService pessimisticOrderService;
+
+    private Member member;
+    private Item item;
 
     @BeforeEach
     void setUp() {
         // 테스트용 회원 생성
-        testMember = Member.builder()
+        member = Member.builder()
                 .username("testUser")
                 .password("password123")
                 .build();
-        memberRepository.save(testMember);
+        memberRepository.save(member);
 
         // 테스트용 상품 생성 (재고 100개)
-        testItem = Item.builder()
+        item = Item.builder()
                 .itemName("테스트 상품")
                 .price(10000)
                 .stockQuantity(100)
                 .build();
-        itemRepository.save(testItem);
+        itemRepository.save(item);
     }
 
     @Test
-    @DisplayName("동시성 테스트 - 100개 재고에 100명이 동시에 1개씩 주문")
+    @DisplayName("동시성 테스트 [비관적 락] - 100개 재고에 100명이 동시에 1개씩 주문")
     void concurrent_order_success() throws InterruptedException {
         // given
         int threadCount = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
+        CountDownLatch countDownLatch = new CountDownLatch(threadCount);
 
         AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger failCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
 
         // when
-        for (int i = 0; i < threadCount; i++) {
-            executorService.submit(() -> {
-                try {
-                    CreateOrderRequest request = new CreateOrderRequest(
-                            testMember.getId(),
-                            List.of(new CreateOrderItemRequest(testItem.getId(), 1))
-                    );
-                    orderService.createOrder(request);
+        for(int i = 0; i < threadCount; i++){
+            executorService.submit(()->{
+                try{
+                    CreateOrderRequest createOrderRequest = new CreateOrderRequest(
+                            member.getId(),
+                            List.of(new CreateOrderItemRequest(item.getId(), 1)));
+
+                    pessimisticOrderService.createOrder(createOrderRequest);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    failCount.incrementAndGet();
+                    failureCount.incrementAndGet();
                     System.out.println("주문 실패: " + e.getMessage());
-                } finally {
-                    latch.countDown();
+                    System.out.println(e.getMessage());
+                }finally {
+                    countDownLatch.countDown();
                 }
             });
         }
 
-        latch.await();
+        countDownLatch.await();
         executorService.shutdown();
 
         // then
-        Item updatedItem = itemRepository.findById(testItem.getId()).orElseThrow();
+        Item updatedItem = itemRepository.findById(item.getId()).orElse(null);
 
         System.out.println("=== 동시성 테스트 결과 ===");
         System.out.println("성공한 주문: " + successCount.get());
-        System.out.println("실패한 주문: " + failCount.get());
+        System.out.println("실패한 주문: " + failureCount.get());
         System.out.println("남은 재고: " + updatedItem.getStockQuantity());
 
-        // 100개 재고에 100개 주문했으므로 모두 성공하고 재고는 0이어야 함
         assertThat(successCount.get()).isEqualTo(100);
-        assertThat(failCount.get()).isEqualTo(0);
+        assertThat(failureCount.get()).isEqualTo(0);
         assertThat(updatedItem.getStockQuantity()).isEqualTo(0);
+
+
     }
+
+    @Test
+    @DisplayName("동시성 테스트 [낙관적 락] - 100개 재고에 100명이 동시에 1개씩 주문")
+    void optimistic_lock_success() throws InterruptedException {
+        // given
+        int threadCount = 100;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch countDownLatch = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+
+        // when
+        for(int i = 0; i < threadCount; i++){
+            executorService.submit(()->{
+                try{
+                    CreateOrderRequest createOrderRequest = new CreateOrderRequest(
+                            member.getId(),
+                            List.of(new CreateOrderItemRequest(item.getId(), 1)));
+
+                    optimisticOrderFacade.createOrder(createOrderRequest);
+                    successCount.incrementAndGet();
+                }catch(Exception e){
+                    failureCount.incrementAndGet();
+                    System.out.println("주문 실패: " + e.getMessage());
+                    assertThat(e).isInstanceOf(ObjectOptimisticLockingFailureException.class);
+                }finally {
+                    countDownLatch.countDown();
+                }
+            });
+        }
+
+        countDownLatch.await();
+        executorService.shutdown();
+
+        // then
+        Item updatedItem = itemRepository.findById(item.getId()).orElse(null);
+
+        System.out.println("=== 동시성 테스트 결과 ===");
+        System.out.println("성공한 주문: " + successCount.get());
+        System.out.println("실패한 주문: " + failureCount.get());
+        System.out.println("남은 재고: " + updatedItem.getStockQuantity());
+    }
+
+
 
     @Test
     @DisplayName("동시성 테스트 - 100개 재고에 150명이 동시에 1개씩 주문 (50명 실패해야 함)")
@@ -118,8 +172,8 @@ class OrderServiceTest {
             executorService.submit(() -> {
                 try {
                     CreateOrderRequest request = new CreateOrderRequest(
-                            testMember.getId(),
-                            List.of(new CreateOrderItemRequest(testItem.getId(), 1))
+                            member.getId(),
+                            List.of(new CreateOrderItemRequest(item.getId(), 1))
                     );
                     orderService.createOrder(request);
                     successCount.incrementAndGet();
@@ -135,7 +189,7 @@ class OrderServiceTest {
         executorService.shutdown();
 
         // then
-        Item updatedItem = itemRepository.findById(testItem.getId()).orElseThrow();
+        Item updatedItem = itemRepository.findById(item.getId()).orElseThrow();
 
         System.out.println("=== 재고 부족 동시성 테스트 결과 ===");
         System.out.println("성공한 주문: " + successCount.get());
@@ -153,8 +207,8 @@ class OrderServiceTest {
     void create_order_success() {
         // given
         CreateOrderRequest request = new CreateOrderRequest(
-                testMember.getId(),
-                List.of(new CreateOrderItemRequest(testItem.getId(), 5))
+                member.getId(),
+                List.of(new CreateOrderItemRequest(item.getId(), 5))
         );
 
         // when
@@ -163,12 +217,12 @@ class OrderServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.orderId()).isNotNull();
-        assertThat(response.memberId()).isEqualTo(testMember.getId());
+        assertThat(response.memberId()).isEqualTo(member.getId());
         assertThat(response.totalPrice()).isEqualTo(50000); // 10000 * 5
         assertThat(response.items()).hasSize(1);
 
         // 재고 확인
-        Item updatedItem = itemRepository.findById(testItem.getId()).orElseThrow();
+        Item updatedItem = itemRepository.findById(item.getId()).orElseThrow();
         assertThat(updatedItem.getStockQuantity()).isEqualTo(95); // 100 - 5
     }
 
@@ -177,8 +231,8 @@ class OrderServiceTest {
     void create_order_fail_due_to_insufficient_stock() {
         // given - 재고 100개인데 101개 주문
         CreateOrderRequest request = new CreateOrderRequest(
-                testMember.getId(),
-                List.of(new CreateOrderItemRequest(testItem.getId(), 101))
+                member.getId(),
+                List.of(new CreateOrderItemRequest(item.getId(), 101))
         );
 
         // when & then
@@ -187,7 +241,7 @@ class OrderServiceTest {
         });
 
         // 재고는 그대로 100개여야 함 (트랜잭션 롤백)
-        Item updatedItem = itemRepository.findById(testItem.getId()).orElseThrow();
+        Item updatedItem = itemRepository.findById(item.getId()).orElseThrow();
         assertThat(updatedItem.getStockQuantity()).isEqualTo(100);
     }
 }

@@ -14,36 +14,14 @@ import project.simple_commerce.order.dto.create.CreateOrderResponse;
 import project.simple_commerce.order.entity.Order;
 import project.simple_commerce.order.repository.OrderRepository;
 import project.simple_commerce.orderItem.OrderItem;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class OrderService {
-
+public class PessimisticOrderService {
     private final MemberRepository memberRepository;
     private final ItemRepository itemRepository;
     private final OrderRepository orderRepository;
-
-    @Transactional
-    public CreateOrderResponse createOrder_back(CreateOrderRequest request) {
-        Member member = memberRepository.findById(request.memberId())
-                .orElseThrow(() -> new NotFoundMemberException("회원을 찾을 수 없습니다. ID: " + request.memberId()));
-
-        OrderItem[] orderItems = request.items().stream()
-                .map(itemRequest -> {
-                    Item item = itemRepository.findById(itemRequest.itemId())
-                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemRequest.itemId()));
-                    return OrderItem.createOrderItem(item, itemRequest.count());
-                })
-                .toArray(OrderItem[]::new);
-
-        Order order = Order.createOrder(member, orderItems);
-
-        Order savedOrder = orderRepository.save(order);
-
-        return CreateOrderResponse.from(savedOrder);
-    }
 
     @Transactional
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
@@ -52,7 +30,7 @@ public class OrderService {
 
         OrderItem[] orderItems = request.items().stream()
                 .map(itemRequest -> {
-                    Item item = itemRepository.findById(itemRequest.itemId())
+                    Item item = itemRepository.findByIdWithPessimisticLock(itemRequest.itemId())
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemRequest.itemId()));
                     return OrderItem.createOrderItem(item, itemRequest.count());
                 })
@@ -64,5 +42,4 @@ public class OrderService {
 
         return CreateOrderResponse.from(savedOrder);
     }
-
 }

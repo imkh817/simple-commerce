@@ -1,9 +1,6 @@
 package project.simple_commerce.item.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.internal.build.AllowSysOut;
 import project.simple_commerce.item.dto.update.UpdateItemRequest;
@@ -20,6 +17,8 @@ public class Item {
     private String itemName;
     private int price;
     private int stockQuantity;  // 재고 수량
+    @Version
+    public Long version;
 
     @Builder
     public Item(String itemName, int price, int stockQuantity){
