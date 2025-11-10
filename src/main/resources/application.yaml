@@ -18,3 +18,11 @@ spring:
         show_sql: true
         format_sql: true
         use_sql_comments: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  redisson:
+    config:
+      singleServerConfig:
+        address:"redis://127.0.0.1:6379"

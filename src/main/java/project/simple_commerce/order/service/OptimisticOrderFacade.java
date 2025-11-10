@@ -14,7 +14,7 @@ import project.simple_commerce.order.exception.ConcurrentOrderException;
 public class OptimisticOrderFacade {
     private final OrderService orderService;
 
-    public CreateOrderResponse createOrder(CreateOrderRequest request)  {
+    public CreateOrderResponse createOrderWithRetry(CreateOrderRequest request) throws InterruptedException {
         int maxRetries = 5;
 
         for (int attempt = 0; attempt < maxRetries; attempt++) {
@@ -46,13 +46,8 @@ public class OptimisticOrderFacade {
                 log.warn("낙관적 락 충돌 발생 ({}회 재시도): memberId={}",
                         attempt + 1, request.memberId());
 
-                try {
-                    long delay = 50L * (long) Math.pow(2, attempt);
-                    Thread.sleep(Math.min(delay, 500L));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("주문 처리 중 인터럽트 발생", ie);
-                }
+                long delay = 50L * (long) Math.pow(2, attempt);
+                Thread.sleep(Math.min(delay, 500L));
             }
         }
 

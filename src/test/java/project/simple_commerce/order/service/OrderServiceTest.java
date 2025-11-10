@@ -130,7 +130,7 @@ class OrderServiceTest {
                             member.getId(),
                             List.of(new CreateOrderItemRequest(item.getId(), 1)));
 
-                    optimisticOrderFacade.createOrder(createOrderRequest);
+                    orderService.createOrderWithRetry(createOrderRequest);
                     successCount.incrementAndGet();
                 }catch(Exception e){
                     failureCount.incrementAndGet();
