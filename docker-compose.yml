@@ -1,0 +1,37 @@
+# docker-compose.yml
+version: '3'
+services:
+  # 'zookeeper' 서비스 아예 삭제!
+
+  # 'kafka' 서비스 하나만 있으면 됨
+  kafka:
+    image: confluentinc/cp-kafka:latest # 네가 원하던 '최신' 이미지
+    ports:
+      - "9093:9093" # 내 PC 9093 -> 컨테이너 9093
+    environment:
+      # ▼▼▼▼▼ KRaft 모드 핵심 설정 ▼▼▼▼▼
+
+      # 1. 역할: '대장(controller)'과 '보관소(broker)' 역할을 둘 다 한다!
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      # 2. 이 서버의 고유 ID
+      KAFKA_NODE_ID: 1
+
+      # 3. 리스너: '데이터'용(9093)과 '대장 선출'용(9094) 포트를 둘 다 연다
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094'
+
+      # 4. 외부 광고: Spring Boot는 "localhost:9093"으로 접속해라!
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9093'
+
+      # 5. 대장 투표 설정: "1번 노드(본인)가 kafka:9094에서 투표권을 행사한다"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9094'
+
+      # 6. 프로토콜 맵: CONTROLLER와 PLAINTEXT 둘 다 정의
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      # "컨트롤러용 리스너 이름은 'CONTROLLER'야!"
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      # ▲▲▲▲▲ KRaft 모드 핵심 설정 끝 ▲▲▲▲▲
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1

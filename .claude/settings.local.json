@@ -3,7 +3,11 @@
     "allow": [
       "Bash(export JAVA_HOME=/Users/jogeonhui/Library/Java/JavaVirtualMachines/corretto-21.0.7/Contents/Home:*)",
       "Bash(./gradlew clean build:*)",
-      "Bash(./gradlew test:*)"
+      "Bash(./gradlew test:*)",
+      "Bash(where:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(\"C:\\DEV\\tools\\_java\\bin\\java.exe\" -version)"
     ],
     "deny": [],
     "ask": []

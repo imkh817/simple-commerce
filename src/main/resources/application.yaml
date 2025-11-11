@@ -12,7 +12,7 @@ spring:
     database: h2
     open-in-view: false
     hibernate:
-      ddl-auto: none # or update, create-drop, validate
+      ddl-auto: update # or update, create-drop, validate
     properties:
       hibernate:
         show_sql: true
@@ -26,3 +26,13 @@ spring:
     config:
       singleServerConfig:
         address:"redis://127.0.0.1:6379"
+  kafka:
+    bootstrap-servers: localhost:9093
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "project.simple_commerce.order.dto"
