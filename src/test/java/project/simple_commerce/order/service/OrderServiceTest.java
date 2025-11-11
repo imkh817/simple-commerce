@@ -41,6 +41,9 @@ class OrderServiceTest {
     @Autowired
     PessimisticOrderService pessimisticOrderService;
 
+    @Autowired
+    DistributedOrderFacade distributedOrderFacade;
+
     private Member member;
     private Item item;
 
@@ -130,7 +133,7 @@ class OrderServiceTest {
                             member.getId(),
                             List.of(new CreateOrderItemRequest(item.getId(), 1)));
 
-                    orderService.createOrderWithRetry(createOrderRequest);
+                    optimisticOrderFacade.createOrderWithRetry(createOrderRequest);
                     successCount.incrementAndGet();
                 }catch(Exception e){
                     failureCount.incrementAndGet();
@@ -152,6 +155,52 @@ class OrderServiceTest {
         System.out.println("성공한 주문: " + successCount.get());
         System.out.println("실패한 주문: " + failureCount.get());
         System.out.println("남은 재고: " + updatedItem.getStockQuantity());
+    }
+
+    @Test
+    @DisplayName("동시성 테스트 [분산 락] - 100개 재고에 100명이 동시에 1개씩 주문")
+    void distributed_lock_success() throws InterruptedException {
+        // given
+        int threadCount = 100;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch countDownLatch = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+
+        // when
+        for(int i = 0; i < threadCount; i++){
+            executorService.submit(()->{
+                try{
+                    CreateOrderRequest createOrderRequest = new CreateOrderRequest(
+                            member.getId(),
+                            List.of(new CreateOrderItemRequest(item.getId(), 1)));
+
+                    distributedOrderFacade.createOrderWithDistributedLock(createOrderRequest);
+                    successCount.incrementAndGet();
+                }catch(Exception e){
+                    failureCount.incrementAndGet();
+                    System.out.println("주문 실패: " + e.getMessage());
+                }finally {
+                    countDownLatch.countDown();
+                }
+            });
+        }
+
+        countDownLatch.await();
+        executorService.shutdown();
+
+        // then
+        Item updatedItem = itemRepository.findById(item.getId()).orElse(null);
+
+        System.out.println("=== 동시성 테스트 결과 ===");
+        System.out.println("성공한 주문: " + successCount.get());
+        System.out.println("실패한 주문: " + failureCount.get());
+        System.out.println("남은 재고: " + updatedItem.getStockQuantity());
+
+        assertThat(successCount.get()).isEqualTo(100);
+        assertThat(failureCount.get()).isEqualTo(0);
+        assertThat(updatedItem.getStockQuantity()).isEqualTo(0);
     }
 
 

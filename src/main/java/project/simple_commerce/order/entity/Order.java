@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import project.simple_commerce.member.entity.Member;
-import project.simple_commerce.orderItem.OrderItem;
+import project.simple_commerce.orderItem.entity.OrderItem;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ public class Order {
     private LocalDateTime orderDate;
 
     // === 생성 메서드 === //
-    public static Order createOrder(Member member, OrderItem... orderItems) {
+    public static Order createOrder(Member member, List<OrderItem> orderItems) {
         Order order = new Order();
         order.member = member;
         order.orderDate = LocalDateTime.now();

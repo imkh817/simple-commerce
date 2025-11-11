@@ -1,7 +1,6 @@
-package project.simple_commerce.orderItem;
+package project.simple_commerce.orderItem.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import project.simple_commerce.item.entity.Item;

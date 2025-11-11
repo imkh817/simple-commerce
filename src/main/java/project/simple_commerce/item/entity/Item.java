@@ -17,7 +17,7 @@ public class Item {
     private String itemName;
     private int price;
     private int stockQuantity;  // 재고 수량
-    @Version
+    //@Version
     public Long version;
 
     @Builder

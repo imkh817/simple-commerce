@@ -1,7 +1,7 @@
 package project.simple_commerce.orderItem.dto;
 
 import lombok.Builder;
-import project.simple_commerce.orderItem.OrderItem;
+import project.simple_commerce.orderItem.entity.OrderItem;
 
 @Builder
 public record CreateOrderItemResponse(
