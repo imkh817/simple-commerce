@@ -7,7 +7,14 @@
       "Bash(where:*)",
       "Bash(dir:*)",
       "Bash(nul)",
-      "Bash(\"C:\\DEV\\tools\\_java\\bin\\java.exe\" -version)"
+      "Bash(\"C:\\DEV\\tools\\_java\\bin\\java.exe\" -version)",
+      "Bash(/usr/libexec/java_home:*)",
+      "Bash(java -version:*)",
+      "Bash(./gradlew bootRun)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(cat:*)",
+      "Bash(redis-cli:*)"
     ],
     "deny": [],
     "ask": []

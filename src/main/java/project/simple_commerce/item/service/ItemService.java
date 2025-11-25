@@ -9,7 +9,7 @@ import project.simple_commerce.item.dto.create.CreateItemResponse;
 import project.simple_commerce.item.dto.update.UpdateItemRequest;
 import project.simple_commerce.item.dto.update.UpdateItemResponse;
 import project.simple_commerce.item.entity.Item;
-import project.simple_commerce.item.exception.ItemNotFoundException;
+import project.simple_commerce.item.exception.NotFoundItemException;
 import project.simple_commerce.item.repository.ItemRepository;
 
 import java.util.List;
@@ -29,7 +29,7 @@ public class ItemService {
 
     public ItemResponseDto findById(Long id) {
         Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Item not found with id: " + id));
+                .orElseThrow(() -> new NotFoundItemException("Item not found with id: " + id));
 
         return ItemResponseDto.from(item);
     }
@@ -39,6 +39,7 @@ public class ItemService {
         Item item = Item.builder()
                 .itemName(createItemRequest.getItemName())
                 .price(createItemRequest.getPrice())
+                .stockQuantity(createItemRequest.getStockQuantity())
                 .build();
 
         Item savedItem = itemRepository.save(item);
@@ -48,7 +49,7 @@ public class ItemService {
     @Transactional
     public UpdateItemResponse update(Long id, UpdateItemRequest updateItemRequest) {
         Item findItem = itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Item not found with id: " + id));
+                .orElseThrow(() -> new NotFoundItemException("Item not found with id: " + id));
 
         findItem.updateInfo(updateItemRequest);
 

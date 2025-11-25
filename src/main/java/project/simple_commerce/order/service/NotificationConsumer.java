@@ -2,11 +2,14 @@ package project.simple_commerce.order.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import project.simple_commerce.order.dto.OrderEvent;
 
-@Service
+//@Service
+
 @Slf4j
+@Component
 public class NotificationConsumer {
     @KafkaListener(
             topics = "order-topic",

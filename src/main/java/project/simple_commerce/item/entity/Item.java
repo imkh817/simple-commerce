@@ -14,8 +14,11 @@ public class Item {
     @Id @GeneratedValue
     @Column(name = "item_id")
     private Long id;
+    @Column(nullable = false)
     private String itemName;
+    @Column(nullable = false)
     private int price;
+    @Column(nullable = false)
     private int stockQuantity;  // 재고 수량
     //@Version
     public Long version;

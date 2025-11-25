@@ -44,7 +44,6 @@ public class OrderService {
                 .toList();
 
         Order order = Order.createOrder(member, orderItems);
-
         Order savedOrder = orderRepository.save(order);
 
         OrderEvent event = new OrderEvent(order.getId(), order.getMember().getId());

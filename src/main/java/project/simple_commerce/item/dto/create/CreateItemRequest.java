@@ -10,4 +10,6 @@ public class CreateItemRequest {
     private String itemName;
     @Min(value = 1, message = "가격은 최소 1원 이상이여야 합니다.")
     private int price;
+    @Min(value = 1, message = "재고는 최소 1개 이상이여야 합니다.")
+    private int stockQuantity;
 }

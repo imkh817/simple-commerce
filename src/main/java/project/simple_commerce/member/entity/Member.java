@@ -1,13 +1,11 @@
 package project.simple_commerce.member.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import project.simple_commerce.cart.entity.Cart;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -19,6 +17,8 @@ public class Member {
     @Column(name = "member_id")
     private Long id;
 
+    @OneToOne(mappedBy = "member", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    private Cart cart;
     private String username;
     private String password;
 

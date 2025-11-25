@@ -22,35 +22,21 @@ public class OptimisticOrderFacade {
                 CreateOrderResponse response = orderService.createOrder(request);
 
                 if (attempt > 0) {
-                    log.info("주문 생성 성공 (재시도 {}회): orderId={}",
-                            attempt, response.orderId());
+                    log.info("주문 성공 ({}회 재시도 후): orderId={}", attempt, response.orderId());
+                } else {
+                    log.info("주문 성공 (1회 시도): orderId={}", response.orderId());
                 }
 
                 return response;
 
             } catch (ObjectOptimisticLockingFailureException e) {
-                if (attempt == maxRetries - 1) {
-                    log.error("주문 생성 최종 실패 (재시도 {}회): memberId={}",
-                            attempt, request.memberId());
+                log.warn("낙관적 락 충돌 발생 ({}회차): memberId={}", attempt + 1, request.memberId());
 
-                    request.items().forEach(item ->
-                            log.error("  - 상품ID: {}, 수량: {}",
-                                    item.itemId(), item.count())
-                    );
-
-                    throw new ConcurrentOrderException(
-                            "현재 많은 주문이 처리되고 있습니다. 잠시 후 다시 시도해주세요."
-                    );
-                }
-
-                log.warn("낙관적 락 충돌 발생 ({}회 재시도): memberId={}",
-                        attempt + 1, request.memberId());
-
-                long delay = 50L * (long) Math.pow(2, attempt);
-                Thread.sleep(Math.min(delay, 500L));
+                long delay = 100L * (long) Math.pow(2, attempt);
+                Thread.sleep(Math.min(delay, 3000L));
             }
         }
 
-        throw new IllegalStateException("예상치 못한 오류 발생");
+        throw new ConcurrentOrderException("현재 많은 주문이 처리되고 있습니다. 잠시 후 다시 시도해주세요.");
     }
 }
