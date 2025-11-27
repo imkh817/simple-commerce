@@ -3,6 +3,7 @@ package project.simple_commerce.cart.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.simple_commerce.cart.dto.CartResponseDto;
 import project.simple_commerce.cart.dto.CreateCartRequestDto;
 import project.simple_commerce.cart.dto.CreateCartResponseDto;
 import project.simple_commerce.cart.entity.Cart;
@@ -27,18 +28,17 @@ public class CartService {
     private final ItemRepository itemRepository;
 
     @Transactional
-    public CreateCartResponseDto addCart(CreateCartRequestDto cartRequestDto){
+    public CreateCartResponseDto addCart(CreateCartRequestDto cartRequestDto) {
 
         // 사용자의 장바구니가 존재하는지 확인
-        Cart cart = cartRepository.findByMemberId(cartRequestDto.memberId());
-
-        if(cart == null){
-            // 존재하지 않으면 장바구니 새로 생성
-            Member member = memberRepository.findById(cartRequestDto.memberId())
-                    .orElseThrow(() -> new NotFoundMemberException("사용자를 찾을 수 없습니다 ID: " + cartRequestDto.memberId()));
-            cart = Cart.createCart(member);
-            cartRepository.save(cart);
-        }
+        Cart cart = cartRepository.findByMemberId(cartRequestDto.memberId())
+                .orElseGet(() -> {
+                    // 존재하지 않으면 장바구니 새로 생성
+                    Member member = memberRepository.findById(cartRequestDto.memberId())
+                            .orElseThrow(() -> new NotFoundMemberException("사용자를 찾을 수 없습니다 ID: " + cartRequestDto.memberId()));
+                    Cart createCart = Cart.createCart(member);
+                    return cartRepository.save(createCart);
+                });
 
         Item item = itemRepository.findById(cartRequestDto.itemId())
                 .orElseThrow(() -> new NotFoundItemException("상품을 찾을 수 없습니다 ID: " + cartRequestDto.itemId()));
@@ -48,13 +48,20 @@ public class CartService {
 
         // 등록되어있으면 수량 증가
         if (savedCartItem != null) {
-            savedCartItem.addCount(cartRequestDto.quantity());
-            return CreateCartResponseDto.of(cart,item, savedCartItem.getQuantity(), false);
+            savedCartItem.addQuantity(cartRequestDto.quantity());
+            return CreateCartResponseDto.of(cart, item, savedCartItem.getQuantity(), false);
         } else {
             // 등록되어있지 않으면 장바구니 상품 등록 후 저장
             CartItem cartItem = CartItem.createCartItem(cart, item, cartRequestDto.quantity());
+            cart.addCartItem(cartItem);
             cartItemRepository.save(cartItem);
             return CreateCartResponseDto.of(cart, item, cartItem.getQuantity(), true);
         }
+    }
+
+    public CartResponseDto searchCart(Long memberId) {
+        return cartRepository.findByMemberId(memberId)
+                .map(CartResponseDto::from)
+                .orElseGet(() -> CartResponseDto.empty(memberId));
     }
 }

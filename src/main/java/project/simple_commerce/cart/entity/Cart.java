@@ -30,4 +30,8 @@ public class Cart {
         return cart;
     }
 
+    public void addCartItem(CartItem cartItem){
+        cartItems.add(cartItem);
+    }
+
 }

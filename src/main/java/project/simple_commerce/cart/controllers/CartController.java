@@ -1,9 +1,8 @@
 package project.simple_commerce.cart.controllers;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import project.simple_commerce.cart.dto.CartResponseDto;
 import project.simple_commerce.cart.dto.CreateCartRequestDto;
 import project.simple_commerce.cart.dto.CreateCartResponseDto;
 import project.simple_commerce.cart.service.CartService;
@@ -18,6 +17,11 @@ public class CartController {
     @PostMapping
     public CreateCartResponseDto createCart(CreateCartRequestDto createCartRequestDto){
         return cartService.addCart(createCartRequestDto);
+    }
+
+    @GetMapping("/{memberId}")
+    public CartResponseDto searchCart(@PathVariable Long memberId){
+        return cartService.searchCart(memberId);
     }
 }
 
